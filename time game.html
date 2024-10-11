@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Keeper Idle</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .game-container {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        #time, #date, #coins, #prestige-points, #farm-level {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        #title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4CAF50;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .upgrade, .prestige-upgrade, .farm-upgrade {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            background-color: #4CAF50;
+            color: white;
+        }
+        .upgrade:hover, .prestige-upgrade:hover, .farm-upgrade:hover {
+            background-color: #45a049;
+        }
+        #prestige, #buy-pet {
+            background-color: #f39c12;
+            color: white;
+        }
+        #prestige:hover, #buy-pet:hover {
+            background-color: #e67e22;
+        }
+        .section {
+            margin-bottom: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        #achievements, #pets {
+            text-align: left;
+        }
+        .achievement, .pet {
+            margin-bottom: 5px;
+        }
+        .achieved {
+            color: green;
+        }
+        #level-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        #level-progress {
+            width: 0%;
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="time"></div>
+        <div id="date"></div>
+        <div id="title">Novice Time Keeper</div>
+        <div id="coins">0 Time Coins</div>
+        <div id="prestige-points">0 Prestige Points</div>
+        <div id="farm-level">Farm Level: 1</div>
+        <div id="level-bar"><div id="level-progress"></div></div>
+        
+        <div class="section">
+            <h3>Upgrades</h3>
+            <button id="upgrade1" class="upgrade">Time Warp (Cost: 10 TC)</button>
+            <button id="upgrade2" class="upgrade">Quantum Leap (Cost: 50 TC)</button>
+            <button id="upgrade3" class="upgrade">Temporal Rift (Cost: 100 TC)</button>
+            <button id="upgrade4" class="upgrade">Chronoshift (Cost: 500 TC)</button>
+            <button id="upgrade5" class="upgrade">Eternity Engine (Cost: 1000 TC)</button>
+        </div>
+        
+        <div class="section">
+            <h3>Time Farm</h3>
+            <button id="buy-timekeeper" class="farm-upgrade">Buy Time Keeper (Cost: 1 PP)</button>
+            <button id="upgrade-farm" class="farm-upgrade">Upgrade Time Farm (Cost: 5 PP)</button>
+        </div>
+        
+        <div class="section">
+            <h3>Prestige Shop</h3>
+            <button id="prestige-upgrade1" class="prestige-upgrade">Boost All Production (Cost: 1 PP)</button>
+            <button id="prestige-upgrade2" class="prestige-upgrade">Unlock Auto-Clicker (Cost: 5 PP)</button>
+            <button id="prestige-upgrade3" class="prestige-upgrade">Improve Offline Progress (Cost: 10 PP)</button>
+        </div>
+        
+        <div class="section">
+            <button id="prestige">Prestige (Req: 1000 TC)</button>
+            <button id="buy-pet">Buy Pet (Cost: 100 PP)</button>
+        </div>
+        
+        <div id="pets" class="section">
+            <h3>Pets</h3>
+        </div>
+        
+        <div id="achievements" class="section">
+            <h3>Achievements</h3>
+        </div>
+    </div>
+
+    <script>
+        let timeCoins = 0;
+        let coinsPerSecond = 1;
+        let upgradeCosts = [10, 50, 100, 500, 1000];
+        let upgradeLevels = [0, 0, 0, 0, 0];
+        let prestigeLevel = 0;
+        let prestigePoints = 0;
+        let lastUpdateTime = Date.now();
+        let autoClickerUnlocked = false;
+        let offlineProgressMultiplier = 1;
+        let farmLevel = 1;
+        let timeKeepers = 0;
+        let pets = [];
+        let currentTitle = "Novice Time Keeper";
+        let titleIndex = 0;
+
+        const titles = [
+            {name: "Novice Time Keeper", rarity: "Common"},
+            {name: "Apprentice Chronologist", rarity: "Common"},
+            {name: "Journeyman Timesmith", rarity: "Uncommon"},
+            {name: "Master of Moments", rarity: "Uncommon"},
+            {name: "Temporal Architect", rarity: "Rare"},
+            {name: "Chrono Commander", rarity: "Rare"},
+            {name: "Eon Emperor", rarity: "Epic"},
+            {name: "Infinity Overseer", rarity: "Epic"},
+            {name: "Eternity Sovereign", rarity: "Legendary"},
+            {name: "Omnipotent Timekeeper", rarity: "Mythic"}
+        ];
+
+        const petTypes = [
+            {name: "Timepup", rarity: "Common", boost: 1.1, stat: "coinsPerSecond"},
+            {name: "Chronocat", rarity: "Common", boost: 1.2, stat: "offlineProgress"},
+            {name: "Temporal Turtle", rarity: "Uncommon", boost: 1.3, stat: "upgradePower"},
+            {name: "Eternity Elephant", rarity: "Uncommon", boost: 1.4, stat: "prestigeBonus"},
+            {name: "Quantum Quokka", rarity: "Rare", boost: 1.5, stat: "coinsPerSecond"},
+            {name: "Paradox Parrot", rarity: "Rare", boost: 1.6, stat: "timekeeperEfficiency"},
+            {name: "Infinity Iguana", rarity: "Epic", boost: 1.8, stat: "allProduction"},
+            {name: "Dimensional Dragon", rarity: "Legendary", boost: 2, stat: "allStats"}
+        ];
+
+        const achievements = [
+            { name: "Time Beginner", description: "Earn 100 Time Coins", check: () => timeCoins >= 100, achieved: false },
+            { name: "Upgrade Master", description: "Buy 10 total upgrades", check: () => upgradeLevels.reduce((a, b) => a + b, 0) >= 10, achieved: false },
+            { name: "Prestige Novice", description: "Prestige for the first time", check: () => prestigeLevel > 0, achieved: false },
+            { name: "Time Lord", description: "Earn 1,000,000 Time Coins", check: () => timeCoins >= 1000000, achieved: false },
+            { name: "Pet Collector", description: "Own 5 pets", check: () => pets.length >= 5, achieved: false },
+            { name: "Farm Tycoon", description: "Reach Farm Level 10", check: () => farmLevel >= 10, achieved: false },
+        ];
+
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('time').textContent = timeString;
+
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateString = now.toLocaleDateString(undefined, options);
+            document.getElementById('date').textContent = dateString;
+        }
+
+        function updateCoins() {
+            const currentTime = Date.now();
+            const timeDiff = (currentTime - lastUpdateTime) / 1000;
+            lastUpdateTime = currentTime;
+
+            const totalMultiplier = calculateTotalMultiplier();
+            timeCoins += coinsPerSecond * timeDiff * totalMultiplier;
+            timeCoins += timeKeepers * timeDiff * (farmLevel * 0.1) * totalMultiplier;
+
+            document.getElementById('coins').textContent = `${Math.floor(timeCoins)} Time Coins`;
+            document.getElementById('prestige-points').textContent = `${prestigePoints} Prestige Points`;
+            document.getElementById('farm-level').textContent = `Farm Level: ${farmLevel}`;
+            updateLevelBar();
+            updateUpgradeButtons();
+            updatePrestigeUpgradeButtons();
+            updateFarmUpgradeButtons();
+            checkAchievements();
+        }
+
+        function calculateTotalMultiplier() {
+            let multiplier = (1 + prestigeLevel * 0.1) * (1 + prestigePoints * 0.05);
+            pets.forEach(pet => {
+                if (pet.stat === 'allProduction' || pet.stat === 'allStats') {
+                    multiplier *= pet.boost;
+                }
+            });
+            return multiplier;
+        }
+
+        function updateLevelBar() {
+            const progress = (farmLevel % 10) * 10;
+            document.getElementById('level-progress').style.width = `${progress}%`;
+        }
+
+        function updateUpgradeButtons() {
+            for (let i = 0; i < 5; i++) {
+                const button = document.getElementById(`upgrade${i+1}`);
+                button.textContent = `${getUpgradeName(i)} (Cost: ${upgradeCosts[i]} TC) [Level ${upgradeLevels[i]}]`;
+                button.disabled = timeCoins < upgradeCosts[i];
+            }
+            document.getElementById('prestige').disabled = timeCoins < 1000;
+            document.getElementById('buy-pet').disabled = prestigePoints < 100;
+        }
+
+        function getUpgradeName(index) {
+            const names = ["Time Warp", "Quantum Leap", "Temporal Rift", "Chronoshift", "Eternity Engine"];
+            return names[index];
+        }
+
+        function updatePrestigeUpgradeButtons() {
+            document.getElementById('prestige-upgrade1').disabled = prestigePoints < 1;
+            document.getElementById('prestige-upgrade2').disabled = prestigePoints < 5 || autoClickerUnlocked;
+            document.getElementById('prestige-upgrade3').disabled = prestigePoints < 10;
+        }
+
+        function updateFarmUpgradeButtons() {
+            document.getElementById('buy-timekeeper').textContent = `Buy Time Keeper (Cost: 1 PP) [${timeKeepers}]`;
+            document.getElementById('buy-timekeeper').disabled = prestigePoints < 1;
+            document.getElementById('upgrade-farm').disabled = prestigePoints < 5;
+        }
+
+        function buyUpgrade(index) {
+            if (timeCoins >= upgradeCosts[index]) {
+                timeCoins -= upgradeCosts[index];
+                upgradeLevels[index]++;
+                applyUpgradeEffect(index);
+                upgradeCosts[index] = Math.floor(upgradeCosts[index] * 1.5);
+                updateCoins();
+            }
+        }
+
+        function applyUpgradeEffect(index) {
+            switch(index) {
+                case 0: coinsPerSecond += 1; break;
+                case 1: coinsPerSecond *= 1.5; break;
+                case 2: offlineProgressMultiplier *= 1.2; break;
+                case 3: timeKeepers++; break;
+                case 4: prestigePoints++; break;
+            }
+        }
+
+        function prestige() {
+            if (timeCoins >= 1000) {
+                const newPrestigePoints = Math.floor(Math.log(timeCoins / 1000) / Math.log(1.5));
+                prestigePoints += newPrestigePoints;
+                prestigeLevel++;
+                timeCoins = 0;
+                coinsPerSecond = 1;
+                upgradeLevels = [0, 0, 0, 0, 0];
+                upgradeCosts = [10, 50, 100, 500, 1000];
+                updateCoins();
+                alert(`Prestige level increased to ${prestigeLevel}! You gained ${newPrestigePoints} Prestige Points.`);
+                updateTitle();
+            }
+        }
+
+        function buyPrestigeUpgrade(index) {
+            if (index === 0 && prestigePoints >= 1) {
+                prestigePoints--;
+                coinsPerSecond *= 1.5;
+            } else if (index === 1 && prestigePoints >= 5 && !autoClickerUnlocked) {
+                prestigePoints -= 5;
+                autoClickerUnlocked = true;
+                setInterval(() => timeCoins++, 1000);
+            } else if (index === 2 && prestigePoints >= 10) {
+                prestigePoints -= 10;
+                offlineProgressMultiplier *= 2;
+            }
+            updateCoins();
+        }
+
+        function buyTimekeeper() {
+            if (prestigePoints >= 1) {
+                prestigePoints--;
+                timeKeepers++;
+                updateCoins();
+            }
+        }
+
+        function upgradeFarm() {
+            if (prestigePoints >= 5) {
+                prestigePoints -= 5;
+                farmLevel++;
+                updateCoins();
+                updateTitle();
+            }
+        }
+
+        function buyPet() {
+            if (prestigePoints >= 100) {
+                prestigePoints -= 100;
+                const pet = getRandomPet();
+                pets.push(pet);
+                updatePetsDisplay();
+                alert(`You got a ${pet.rarity} ${pet.name}!`);
+                updateCoins();
+            }
+        }
+
+        function getRandomPet() {
+            const rarity = Math.random();
+            let pool;
+            if (rarity < 0.5) pool = petTypes.filter(p => p.rarity === "Common");
+            else if (rarity < 0.8) pool = petTypes.filter(p => p.rarity === "Uncommon");
+            else if (rarity < 0.95) pool = petTypes.filter(p => p.rarity === "Rare");
+            else if (rarity < 0.99) pool = petTypes.filter(p => p.rarity === "Epic");
+            else pool = petTypes.filter(p => p.rarity === "Legendary");
+            
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+
+        function updatePetsDisplay() {
+            const petsContainer = document.getElementById('pets');
+            petsContainer.innerHTML = '<h3>Pets</h3>';
+            pets.forEach((pet, index) => {
+                const petElement = document.createElement('div');
+                petElement.classList.add('pet');
+                petElement.textContent = `${pet.name} (${pet.rarity}): Boosts ${pet.stat} by ${(pet.boost - 1) * 100}%`;
+                petsContainer.appendChild(petElement);
+            });
+        }
+
+        function updateTitle() {
+            if (farmLevel > titleIndex + 1 && titleIndex < titles.length - 1) {
+                titleIndex++;
+                currentTitle = titles[titleIndex].name;
+                document.getElementById('title').textContent = currentTitle;
+                alert(`You've earned a new title: ${currentTitle} (${titles[titleIndex].rarity})!`);
+            }
+        }
+
+        function checkAchievements() {
+            achievements.forEach((achievement, index) => {
+                if (!achievement.achieved && achievement.check()) {
+                    achievement.achieved = true;
+                    document.getElementById(`achievement${index}`).classList.add('achieved');
+                    alert(`Achievement unlocked: ${achievement.name}`);
+                }
+            });
+        }
+
+        function initAchievements() {
+            const achievementsContainer = document.getElementById('achievements');
+            achievements.forEach((achievement, index) => {
+                const achievementElement = document.createElement('div');
+                achievementElement.id = `achievement${index}`;
+                achievementElement.classList.add('achievement');
+                achievementElement.textContent = `${achievement.name}: ${achievement.description}`;
+                achievementsContainer.appendChild(achievementElement);
+            });
+        }
+
+        function saveGame() {
+            const gameState = {
+                timeCoins,
+                coinsPerSecond,
+                upgradeCosts,
+                upgradeLevels,
+                prestigeLevel,
+                prestigePoints,
+                autoClickerUnlocked,
+                offlineProgressMultiplier,
+                farmLevel,
+                timeKeepers,
+                pets,
+                currentTitle,
+                titleIndex,
+                lastUpdateTime
+            };
+            localStorage.setItem('timeKeeperIdleState', JSON.stringify(gameState));
+        }
+
+        function loadGame() {
+            const savedState = localStorage.getItem('timeKeeperIdleState');
+            if (savedState) {
+                const gameState = JSON.parse(savedState);
+                timeCoins = gameState.timeCoins;
+                coinsPerSecond = gameState.coinsPerSecond;
+                upgradeCosts = gameState.upgradeCosts;
+                upgradeLevels = gameState.upgradeLevels;
+                prestigeLevel = gameState.prestigeLevel;
+                prestigePoints = gameState.prestigePoints;
+                autoClickerUnlocked = gameState.autoClickerUnlocked;
+                offlineProgressMultiplier = gameState.offlineProgressMultiplier;
+                farmLevel = gameState.farmLevel;
+                timeKeepers = gameState.timeKeepers;
+                pets = gameState.pets;
+                currentTitle = gameState.currentTitle;
+                titleIndex = gameState.titleIndex;
+                lastUpdateTime = gameState.lastUpdateTime;
+
+                document.getElementById('title').textContent = currentTitle;
+                updatePetsDisplay();
+                updateCoins();
+
+                const currentTime = Date.now();
+                const offlineTime = (currentTime - lastUpdateTime) / 1000;
+                const offlineCoins = coinsPerSecond * offlineTime * offlineProgressMultiplier;
+                timeCoins += offlineCoins;
+                alert(`Welcome back! You earned ${Math.floor(offlineCoins)} Time Coins while away.`);
+            }
+        }
+
+        document.getElementById('upgrade1').addEventListener('click', () => buyUpgrade(0));
+        document.getElementById('upgrade2').addEventListener('click', () => buyUpgrade(1));
+        document.getElementById('upgrade3').addEventListener('click', () => buyUpgrade(2));
+        document.getElementById('upgrade4').addEventListener('click', () => buyUpgrade(3));
+        document.getElementById('upgrade5').addEventListener('click', () => buyUpgrade(4));
+        document.getElementById('prestige').addEventListener('click', prestige);
+        document.getElementById('prestige-upgrade1').addEventListener('click', () => buyPrestigeUpgrade(0));
+        document.getElementById('prestige-upgrade2').addEventListener('click', () => buyPrestigeUpgrade(1));
+        document.getElementById('prestige-upgrade3').addEventListener('click', () => buyPrestigeUpgrade(2));
+        document.getElementById('buy-timekeeper').addEventListener('click', buyTimekeeper);
+        document.getElementById('upgrade-farm').addEventListener('click', upgradeFarm);
+        document.getElementById('buy-pet').addEventListener('click', buyPet);
+
+        setInterval(updateTime, 1000);
+        setInterval(updateCoins, 100);
+        setInterval(saveGame, 30000);  // Autosave every 30 seconds
+        updateTime();
+        loadGame();
+        initAchievements();
+
+        window.addEventListener('beforeunload', saveGame);
+    </script>
+</body>
+</html>
